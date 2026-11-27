@@ -1,8 +1,12 @@
-# Athena Desktop Exam Client
+# ProctorDesk
 
-Athena is an Electron and React exam client. Grading is performed by the API in
+ProctorDesk is an Electron and React exam-proctoring client inspired by
+**Newton Athena**. Grading is performed by the API in
 `backend/`; production desktop packages never contain that service or its answer
 key.
+
+Existing Athena application, configuration, and storage identifiers are retained
+for compatibility.
 
 ## Local development
 

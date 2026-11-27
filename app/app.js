@@ -12,6 +12,7 @@ let snapshotStore = null;
 let captureGeneration = 0;
 let selectingFolder = false;
 let forceQuit = false;
+let isSystemDialogShowing = false;
 let timerInterval = null;
 let cameraSnapInterval = null;
 let apiBaseUrl = null;
@@ -34,7 +35,7 @@ function clearExamIntervals() {
 function requireSnapshotRenderer(event) {
     if (!electronWindow || electronWindow.isDestroyed() || event.sender !== electronWindow.webContents
         || event.senderFrame !== electronWindow.webContents.mainFrame) {
-        throw new Error('Snapshot request rejected: untrusted renderer');
+        throw new Error('Request rejected: untrusted renderer');
     }
 }
 
@@ -56,16 +57,20 @@ function captureSnapshot(event, kind, sessionId, createImage) {
 
 function attemptQuit() {
     if (forceQuit) return;
+    isSystemDialogShowing = true;
     dialog.showMessageBox(electronWindow, {
         type: 'warning',
         buttons: ['Yes', 'No'],
         title: 'Confirm Quit',
         message: 'Are you sure you want to quit the exam?'
     }).then(res => {
+        isSystemDialogShowing = false;
         if (res.response === 0) {
             forceQuit = true;
             app.quit();
         }
+    }).catch(() => {
+        isSystemDialogShowing = false;
     });
 }
 
@@ -78,11 +83,11 @@ function createWindow() {
         frame: false,
         autoHideMenuBar: true,
         webPreferences: {
-            webSecurity: false,
-            devTools: true,
+            webSecurity: true,
+            devTools: !app.isPackaged,
             preload: path.join(import.meta.dirname, 'preload.js')
         }
-    })
+    });
 
     const distPath = path.join(import.meta.dirname, '../dist/index.html');
     if (app.isPackaged) {
@@ -126,7 +131,7 @@ function createWindow() {
     });
 
     electronWindow.on('blur', () => {
-        if (electronWindow && !electronWindow.isDestroyed()) {
+        if (electronWindow && !electronWindow.isDestroyed() && !isSystemDialogShowing) {
             electronWindow.webContents.send('window-blur');
         }
     });
@@ -151,14 +156,13 @@ function createWindow() {
     });
 }
 
-ipcMain.handle('is-fullscreen', () => {
+ipcMain.handle('is-fullscreen', (event) => {
+    requireSnapshotRenderer(event);
     return electronWindow ? electronWindow.isFullScreen() : false;
 });
 
 ipcMain.handle('api-request', async (event, request) => {
-    if (!electronWindow || electronWindow.isDestroyed() || event.sender !== electronWindow.webContents) {
-        throw new Error('API request rejected: untrusted renderer');
-    }
+    requireSnapshotRenderer(event);
 
     if (!apiToken) {
         throw new Error('API request rejected: authentication is unavailable');
@@ -215,7 +219,8 @@ ipcMain.handle('api-request', async (event, request) => {
     };
 });
 
-ipcMain.handle('check-multiple-displays', () => {
+ipcMain.handle('check-multiple-displays', (event) => {
+    requireSnapshotRenderer(event);
     return screen.getAllDisplays().length > 1;
 });
 
@@ -224,7 +229,6 @@ ipcMain.handle('start-timer', (event) => {
     clearExamIntervals();
     startTimestamp = Date.now();
 
-    // Send Timer Tick every 1s (rounded integer elapsed seconds)
     timerInterval = setInterval(() => {
         if (electronWindow && !electronWindow.isDestroyed()) {
             const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
@@ -232,7 +236,6 @@ ipcMain.handle('start-timer', (event) => {
         }
     }, 1000);
 
-    // Request independent camera and desktop snapshots every 5s
     cameraSnapInterval = setInterval(() => {
         if (electronWindow && !electronWindow.isDestroyed()) {
             electronWindow.webContents.send('camera-shot');
@@ -245,11 +248,9 @@ ipcMain.handle('stop-timer', (event) => {
     clearExamIntervals();
 });
 
-
 ipcMain.handle('store-camera-snap-image-on-disk', (event, data, sessionId) => (
     captureSnapshot(event, 'camera', sessionId, () => data)
 ));
-
 
 async function getPrimaryScreenSource(thumbnailSize) {
     const primaryDisplay = screen.getPrimaryDisplay();
@@ -265,7 +266,6 @@ async function getPrimaryScreenSource(thumbnailSize) {
 
     if (primaryScreen) return primaryScreen;
 
-    // Some platforms omit display IDs. Only fall back when the screen is unambiguous.
     if (screenSources.length === 1 && !screenSources[0].display_id && screen.getAllDisplays().length === 1) {
         return screenSources[0];
     }
@@ -289,7 +289,7 @@ ipcMain.handle('capture-screen', (event, sessionId) => (
 ));
 
 async function showRulesDialog() {
-    const response = await dialog.showMessageBox(electronWindow, {
+    return await dialog.showMessageBox(electronWindow, {
         type: "info",
         title: "Athena Exam Rules",
         message: "Exam Rules & Guidelines",
@@ -303,22 +303,20 @@ async function showRulesDialog() {
         checkboxLabel: "I have read and agree to follow these rules",
         checkboxChecked: false
     });
-
-    console.log("Clicked Button:", response.response === 0 ? "I Agree" : "Cancel", `(Index: ${response.response})`);
-    console.log("Checkbox selection:", response.checkboxChecked);
-
-    return response;
 }
 
-ipcMain.handle("show-rules", async () => {
+ipcMain.handle("show-rules", async (event) => {
+    requireSnapshotRenderer(event);
     return await showRulesDialog();
 });
 
-ipcMain.on("show-rules", async () => {
+ipcMain.on("show-rules", async (event) => {
+    requireSnapshotRenderer(event);
     await showRulesDialog();
 });
 
-ipcMain.handle("exit-exam", (_event, confirm = true) => {
+ipcMain.handle("exit-exam", (event, confirm = true) => {
+    requireSnapshotRenderer(event);
     if (confirm) {
         attemptQuit();
     } else {
@@ -411,7 +409,6 @@ function configureExamApi() {
     return backendProcess;
 }
 
-
 app.whenReady().then(() => {
     let backendProcess;
 
@@ -429,6 +426,22 @@ app.whenReady().then(() => {
         if (backendProcess) backendProcess.kill();
     });
 
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+        if (electronWindow && !electronWindow.isDestroyed() && webContents === electronWindow.webContents) {
+            if (['media', 'camera', 'microphone', 'display-capture', 'fullscreen'].includes(permission)) {
+                return callback(true);
+            }
+        }
+        callback(false);
+    });
+
+    session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
+        if (electronWindow && !electronWindow.isDestroyed() && webContents === electronWindow.webContents) {
+            return ['media', 'camera', 'microphone', 'display-capture', 'fullscreen'].includes(permission);
+        }
+        return false;
+    });
+
     session.defaultSession.setDisplayMediaRequestHandler(
         async (_request, callback) => {
             let streams = {};
@@ -440,12 +453,10 @@ app.whenReady().then(() => {
             }
             callback(streams);
         },
-        // The native picker bypasses this handler and can select a window or another display.
         { useSystemPicker: false }
     );
     createWindow();
 });
-
 
 async function selectFolder() {
     if (selectingFolder || timerInterval || snapshotStore?.isBusy) {
