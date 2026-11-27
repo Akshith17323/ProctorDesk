@@ -227,7 +227,7 @@ export default function Quiz({ sessionId, timer, violationCount = 0, restoredAns
       <main className="quiz-load-state" aria-busy={isLoading}>
         <div className="quiz-load-card">
           {isLoading ? (
-            <p className="quiz-load-message" role="status">Loading quiz questions...</p>
+            <p className="quiz-load-message" role="status">Loading assessment questions...</p>
           ) : (
             <>
               <div role="alert">
@@ -259,7 +259,7 @@ export default function Quiz({ sessionId, timer, violationCount = 0, restoredAns
       {/* Top Header */}
       <header className="quiz-header">
         <div className="quiz-title">
-          Gated Architectures, LSTM, GRU - Revision
+          Gated Architectures, LSTM, GRU
         </div>
 
         <div className="quiz-header-right">
@@ -270,7 +270,7 @@ export default function Quiz({ sessionId, timer, violationCount = 0, restoredAns
           )}
 
           <div className="quiz-timer-badge">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg className="quiz-timer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"></circle>
               <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
@@ -282,17 +282,16 @@ export default function Quiz({ sessionId, timer, violationCount = 0, restoredAns
             onClick={() => setShowConfirmSubmit(true)}
             disabled={isSubmitting || hasPendingAnswers}
           >
-            {hasPendingAnswers ? 'Saving Answer...' : 'Submit Quiz'}
+            {hasPendingAnswers ? 'Saving...' : 'Finish Exam'}
           </button>
         </div>
       </header>
 
       {/* Main Question Area */}
       <main className="quiz-body">
-        {/* Sub-bar above Question */}
         <div className="question-subbar">
           <div className="question-counter">
-            QUESTION {currentIndex + 1}/{totalQuestions}
+            Question {currentIndex + 1} of {totalQuestions}
           </div>
 
           <div className="question-actions">
@@ -300,7 +299,11 @@ export default function Quiz({ sessionId, timer, violationCount = 0, restoredAns
               className={`btn-review ${isMarkedForReview ? 'active' : ''}`}
               onClick={() => toggleMarkForReview(currentQuestion.id)}
             >
-              {isMarkedForReview ? 'Marked for review ✓' : 'Mark for review'}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill={isMarkedForReview ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                <line x1="4" y1="22" x2="4" y2="15"></line>
+              </svg>
+              <span>{isMarkedForReview ? 'Flagged for review' : 'Flag for review'}</span>
             </button>
 
             <button
@@ -308,37 +311,28 @@ export default function Quiz({ sessionId, timer, violationCount = 0, restoredAns
               disabled={selectedOptIndex === undefined || currentQuestionPending || isSubmitting}
               onClick={() => handleClearSelection(currentQuestion.id)}
             >
-              {currentQuestionPending ? 'Saving...' : 'Clear Selection'}
+              {currentQuestionPending ? 'Saving...' : 'Clear choice'}
             </button>
 
-            <button className="btn-feedback" title="Report issue" onClick={() => alert("Report Question feedback logged.")}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m8 2 1.88 1.88"></path>
-                <path d="M14.12 3.88 16 2"></path>
-                <path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"></path>
-                <path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"></path>
-                <path d="M12 20v-9"></path>
-                <path d="M6.53 9C4.6 8.8 3 7.1 3 5"></path>
-                <path d="M6 13H2"></path>
-                <path d="M3 21c0-2.1 1.7-3.9 3.8-4"></path>
-                <path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"></path>
-                <path d="M22 13h-4"></path>
-                <path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"></path>
+            <button className="btn-feedback" title="Report issue" onClick={() => alert("Feedback logged for this question.")}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
               </svg>
             </button>
           </div>
         </div>
 
-        {/* Question Heading */}
         <h2 className="question-title">
           {currentQuestion.question}
         </h2>
 
-        {/* Vertical Options List */}
+        {/* Options List */}
         <div className="options-stack">
           {currentQuestion.options.map((optionText, optIdx) => {
             const isSelected = selectedOptIndex === optIdx;
-            const letter = String.fromCharCode(65 + optIdx); // A, B, C, D
+            const letter = String.fromCharCode(65 + optIdx);
 
             return (
               <div
@@ -352,10 +346,6 @@ export default function Quiz({ sessionId, timer, violationCount = 0, restoredAns
                 role="radio"
                 aria-checked={isSelected}
                 aria-disabled={currentQuestionPending || isSubmitting}
-                style={{
-                  cursor: currentQuestionPending || isSubmitting ? 'not-allowed' : 'pointer',
-                  opacity: currentQuestionPending || isSubmitting ? 0.7 : 1,
-                }}
               >
                 <span className="option-letter">{letter}</span>
                 <span className="option-text">{optionText}</span>
@@ -365,27 +355,22 @@ export default function Quiz({ sessionId, timer, violationCount = 0, restoredAns
         </div>
       </main>
 
-      {/* Question Palette Drawer / Popover */}
+      {/* Questions Palette Popover */}
       {showPalette && (
         <div className="palette-popover">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>Questions Palette</span>
-            <button
-              style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#94a3b8' }}
-              onClick={() => setShowPalette(false)}
-            >
-              ×
-            </button>
+          <div className="palette-header">
+            <span className="palette-title">Question Navigator</span>
+            <button className="palette-close-btn" onClick={() => setShowPalette(false)}>×</button>
           </div>
-          <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: '#64748b', marginBottom: '10px' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></span> Answered
+          <div className="palette-legend">
+            <span className="palette-legend-item">
+              <span className="palette-legend-dot answered"></span> Answered
             </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#6366f1' }}></span> Review
+            <span className="palette-legend-item">
+              <span className="palette-legend-dot reviewed"></span> Flagged
             </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e2e8f0' }}></span> Unvisited
+            <span className="palette-legend-item">
+              <span className="palette-legend-dot unvisited"></span> Unvisited
             </span>
           </div>
           <div className="palette-grid">
@@ -395,8 +380,8 @@ export default function Quiz({ sessionId, timer, violationCount = 0, restoredAns
               const isCurr = idx === currentIndex;
 
               let itemClass = 'palette-item';
+              if (isAnswered) itemClass += ' answered';
               if (isRev) itemClass += ' reviewed';
-              else if (isAnswered) itemClass += ' answered';
               if (isCurr) itemClass += ' current';
 
               return (
@@ -416,54 +401,50 @@ export default function Quiz({ sessionId, timer, violationCount = 0, restoredAns
         </div>
       )}
 
-      {/* Bottom Sticky Navigation Bar */}
+      {/* Bottom Navigation Bar */}
       <footer className="quiz-bottom-bar">
-        {/* Previous Button */}
         <button
           className="btn-nav-prev"
           disabled={currentIndex === 0}
           onClick={() => setCurrentIndex(c => Math.max(0, c - 1))}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
           <span>Previous</span>
         </button>
 
-        {/* Center Grid Toggle Icon */}
         <button
           className="btn-grid-palette"
-          title="Toggle Questions Palette"
+          title="Toggle question navigator"
           onClick={() => setShowPalette(p => !p)}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
-            <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
-            <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
-            <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
           </svg>
         </button>
 
-        {/* Next / Submit Button */}
         {currentIndex < totalQuestions - 1 ? (
           <button
             className="btn-nav-next"
             onClick={() => setCurrentIndex(c => Math.min(totalQuestions - 1, c + 1))}
           >
             <span>Next</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="9 18 15 12 9 6"></polyline>
             </svg>
           </button>
         ) : (
           <button
             className="btn-nav-next"
-            style={{ backgroundColor: '#338656' }}
             onClick={() => setShowConfirmSubmit(true)}
             disabled={isSubmitting || hasPendingAnswers}
           >
-            <span>{hasPendingAnswers ? 'Saving...' : 'Finish'}</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <span>{hasPendingAnswers ? 'Saving...' : 'Finish Exam'}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="20 6 9 17 4 12"></polyline>
             </svg>
           </button>
@@ -472,64 +453,42 @@ export default function Quiz({ sessionId, timer, violationCount = 0, restoredAns
 
       {/* Submit Confirmation Modal */}
       {showConfirmSubmit && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.65)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '16px',
-            maxWidth: '460px',
-            width: '100%',
-            padding: '28px',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
-          }}>
-            <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#0f172a', marginBottom: '12px' }}>
-              Submit Exam?
-            </h3>
-            <p style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.5', marginBottom: '20px' }}>
-              Are you sure you want to finish and submit your test? Once submitted, answers cannot be edited.
+        <div className="modal-overlay">
+          <div className="confirm-modal-box">
+            <h3 className="confirm-modal-title">Submit Examination?</h3>
+            <p className="confirm-modal-desc">
+              Are you sure you want to finalize and submit your test? Once submitted, your answers cannot be modified.
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', textAlign: 'center', marginBottom: '24px' }}>
-              <div style={{ background: '#f0fdf4', padding: '10px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-                <div style={{ fontSize: '18px', fontWeight: '700', color: '#16a34a' }}>{totalAnswered}</div>
-                <div style={{ fontSize: '11px', color: '#166534', fontWeight: '600' }}>Answered</div>
+            <div className="confirm-stat-grid">
+              <div className="confirm-stat-card">
+                <div className="confirm-stat-val">{totalAnswered}</div>
+                <div className="confirm-stat-label">Answered</div>
               </div>
-              <div style={{ background: '#eef2ff', padding: '10px', borderRadius: '8px', border: '1px solid #c7d2fe' }}>
-                <div style={{ fontSize: '18px', fontWeight: '700', color: '#4f46e5' }}>{totalReviewed}</div>
-                <div style={{ fontSize: '11px', color: '#4338ca', fontWeight: '600' }}>For Review</div>
+              <div className="confirm-stat-card">
+                <div className="confirm-stat-val">{totalReviewed}</div>
+                <div className="confirm-stat-label">Flagged</div>
               </div>
-              <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: '18px', fontWeight: '700', color: '#64748b' }}>{totalQuestions - totalAnswered}</div>
-                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>Left</div>
+              <div className="confirm-stat-card">
+                <div className="confirm-stat-val">{totalQuestions - totalAnswered}</div>
+                <div className="confirm-stat-label">Remaining</div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <div className="confirm-modal-actions">
               <button
                 className="btn btn-outline"
                 onClick={() => setShowConfirmSubmit(false)}
                 disabled={isSubmitting}
               >
-                Continue Test
+                Continue test
               </button>
               <button
-                className="btn"
-                style={{ backgroundColor: '#338656', color: '#ffffff' }}
+                className="btn btn-primary"
                 onClick={submitExamOnBackend}
                 disabled={isSubmitting || hasPendingAnswers}
               >
-                {isSubmitting ? 'Submitting...' : hasPendingAnswers ? 'Saving Answer...' : 'Yes, Submit'}
+                {isSubmitting ? 'Submitting...' : hasPendingAnswers ? 'Saving...' : 'Submit exam'}
               </button>
             </div>
           </div>
