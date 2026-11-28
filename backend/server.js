@@ -150,6 +150,7 @@ app.post("/exam/start", (req, res) => {
   res.status(201).json({
     message: "Exam session started",
     sessionId: session.sessionId,
+    startedAt: session.startedAt,
   });
 });
 

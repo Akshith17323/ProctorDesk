@@ -9,9 +9,15 @@ function stopMediaStream(stream) {
   if (!stream) return;
   try {
     stream.getTracks().forEach(track => {
-      try { track.stop(); } catch {}
+      try {
+        track.stop();
+      } catch {
+        // Ignore errors during track cleanup
+      }
     });
-  } catch {}
+  } catch {
+    // Ignore errors during stream cleanup
+  }
 }
 
 function App() {
@@ -31,6 +37,7 @@ function App() {
   const [isStartingExam, setIsStartingExam] = useState(false);
   const candidateGenerationRef = useRef(0);
   const sessionIdRef = useRef(null);
+  const sessionStartedAtRef = useRef(null);
   const isStartingExamRef = useRef(false);
   const quizStartedRef = useRef(false);
   const [runSnapshotCapture] = useState(() => createSnapshotCaptureRunner());
@@ -92,6 +99,7 @@ function App() {
 
           if (data.status === "in-progress") {
             setSessionId(storedSessionId);
+            sessionStartedAtRef.current = data.startedAt || null;
             const newAnswers = {};
             data.answers.forEach(ans => {
               newAnswers[ans.questionId] = ans.selectedAnswer;
@@ -375,11 +383,13 @@ function App() {
 
       if (response.ok) {
         setSessionId(data.sessionId);
+        const startedAt = data.startedAt || new Date().toISOString();
+        sessionStartedAtRef.current = startedAt;
         setSnapshotErrors({});
         setQuizStarted(true);
         setShowPermissionsModal(false);
         localStorage.setItem('athena_sessionId', data.sessionId);
-        await window.athena?.startTimerOnMain?.();
+        await window.athena?.startTimerOnMain?.(startedAt);
       } else {
         alert("Failed to start exam: " + data.message);
       }
@@ -409,7 +419,7 @@ function App() {
     setSnapshotErrors({});
     setQuizStarted(true);
     setShowPermissionsModal(false);
-    await window.athena?.startTimerOnMain?.();
+    await window.athena?.startTimerOnMain?.(sessionStartedAtRef.current);
   }
 
   function handleStartTestClick() {
@@ -430,6 +440,7 @@ function App() {
     event.stopPropagation();
     candidateGenerationRef.current += 1;
     sessionIdRef.current = null;
+    sessionStartedAtRef.current = null;
     quizStartedRef.current = false;
     isStartingExamRef.current = false;
     stopMediaStream(streamRef.current);
@@ -523,6 +534,7 @@ function App() {
                 onClick={() => {
                   setExamResults(null);
                   setSessionId(null);
+                  sessionStartedAtRef.current = null;
                   setRestoredAnswers({});
                   localStorage.removeItem('athena_sessionId');
                 }}

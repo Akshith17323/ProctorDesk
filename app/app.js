@@ -224,17 +224,32 @@ ipcMain.handle('check-multiple-displays', (event) => {
     return screen.getAllDisplays().length > 1;
 });
 
-ipcMain.handle('start-timer', (event) => {
+ipcMain.handle('start-timer', (event, startedAt) => {
     requireSnapshotRenderer(event);
     clearExamIntervals();
-    startTimestamp = Date.now();
 
-    timerInterval = setInterval(() => {
+    let parsedStart = Date.now();
+    if (typeof startedAt === 'number' && Number.isFinite(startedAt) && startedAt > 0) {
+        parsedStart = startedAt;
+    } else if (typeof startedAt === 'string') {
+        const parsed = Date.parse(startedAt);
+        if (!isNaN(parsed) && parsed > 0) {
+            parsedStart = parsed;
+        }
+    }
+
+    startTimestamp = Math.min(parsedStart, Date.now());
+
+    const sendTimerTick = () => {
         if (electronWindow && !electronWindow.isDestroyed()) {
-            const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
+            const elapsed = Math.max(0, Math.floor((Date.now() - startTimestamp) / 1000));
             electronWindow.webContents.send('timer', elapsed);
         }
-    }, 1000);
+    };
+
+    sendTimerTick();
+
+    timerInterval = setInterval(sendTimerTick, 1000);
 
     cameraSnapInterval = setInterval(() => {
         if (electronWindow && !electronWindow.isDestroyed()) {
