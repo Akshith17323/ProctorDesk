@@ -12,3 +12,7 @@ user-screen-snap
 *.DS_Store
 UPCOMING_FEATURES.md
 KNOWN_ISSUES.md
+*-firebase-adminsdk-*.json
+*.pem
+*.key
+

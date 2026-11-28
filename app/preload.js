@@ -50,8 +50,8 @@ contextBridge.exposeInMainWorld("athena", {
             ipcRenderer.removeListener('timer', fn);
         }
     },
-    startTimerOnMain: () => {
-        return ipcRenderer.invoke('start-timer');
+    startTimerOnMain: (startedAt) => {
+        return ipcRenderer.invoke('start-timer', startedAt);
     },
     stopTimerOnMain: () => {
         return ipcRenderer.invoke('stop-timer');
